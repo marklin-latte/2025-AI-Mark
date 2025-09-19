@@ -43,6 +43,12 @@
 
 ## 開發指令
 
+
+```
+cp .env.example .env
+```
+
+
 ```bash
 # 同時啟動前後端開發服務器
 npm run dev
@@ -64,5 +70,3 @@ npm run drag-chat-graph
 
 - **前端服務**: http://localhost:3000
 - **後端服務**: http://localhost:3001
-- **API 路徑**: `/api/*`
-- **健康檢查**: `/health`
