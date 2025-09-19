@@ -1,0 +1,33 @@
+{
+  "name": "2025-ai-mark",
+  "version": "1.0.0",
+  "description": "2025-鐵人賽 AI 工具人",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server:dev\" \"npm run frontend:dev\"",
+    "server:dev": "tsx watch server/src/index.ts",
+    "frontend:dev": "vite",
+    "frontend:build": "vite build",
+    "drag-chat-graph": "tsx server/src/scripts/dragChatGraph.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@langchain/core": "^1.0.0-alpha.5",
+    "@langchain/langgraph": "^1.0.0-alpha.3",
+    "@langchain/openai": "^1.0.0-alpha.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "langchain": "^1.0.0-alpha.6",
+    "vue": "^3.5.21",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "concurrently": "^9.2.1",
+    "tsx": "^4.20.5",
+    "vite": "^7.1.6"
+  }
+}
