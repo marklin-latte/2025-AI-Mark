@@ -1,15 +1,26 @@
-import { ChatOpenAI } from "@langchain/openai";
 import { BaseMessage, SystemMessage, HumanMessage } from "langchain";
+import { createAgent } from "langchain";
+import { Configurable } from "./interfaces/configurable";
+import { BaseCheckpointSaver } from "@langchain/langgraph";
 
 /**
  * 基礎 Chat AI 服務，他可以做任何事情，不會做任何限制
  */
 export class BaseChatAI {
-  private model: ChatOpenAI;
+  private checkpointSaver: BaseCheckpointSaver;
+  private configurable: Configurable;
+  private agent: any;
 
-  constructor() {
-    this.model = new ChatOpenAI({
-      modelName: "gpt-5-mini",
+  constructor(
+    checkpointSaver: BaseCheckpointSaver,
+    configurable: Configurable
+  ) {
+    this.checkpointSaver = checkpointSaver;
+    this.configurable = configurable;
+    this.agent = createAgent({
+      model: "openai:gpt-5-mini",
+      tools: [],
+      checkpointer: this.checkpointSaver,
     });
   }
 
@@ -20,8 +31,18 @@ export class BaseChatAI {
       ),
       new HumanMessage(message),
     ];
-    const response = await this.model.invoke(messages);
 
-    return [response];
+    const response = await this.agent.invoke(
+      {
+        messages,
+      },
+      {
+        configurable: {
+          thread_id: this.configurable.threadId,
+        },
+      }
+    );
+
+    return response.messages;
   }
 }

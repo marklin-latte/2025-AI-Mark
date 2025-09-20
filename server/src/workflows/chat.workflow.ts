@@ -38,7 +38,9 @@ export class ChatWorkflow {
       defaultTTL: 60, // TTL in minutes
       refreshOnRead: true,
     });
-    this.baseChatAI = new BaseChatAI();
+    this.baseChatAI = new BaseChatAI(this.checkpointSaver, {
+      threadId: this.threadId,
+    });
     this.graph = this.buildGraph();
   }
 
@@ -70,7 +72,9 @@ export class ChatWorkflow {
     if (!this.checkpointSaver) {
       throw new Error("Checkpoint saver is not initialized");
     }
-    return workflow.compile();
+    return workflow.compile({
+      checkpointer: this.checkpointSaver,
+    });
   }
 
   async getMermaidGraph(): Promise<string> {
@@ -87,7 +91,11 @@ export class ChatWorkflow {
       messages: [],
     };
 
-    const result: ChatState = await this.graph.invoke(initialState);
+    const result: ChatState = await this.graph.invoke(initialState, {
+      configurable: {
+        thread_id: this.threadId,
+      },
+    });
 
     yield result.messages[result.messages.length - 1].content as string;
   }
