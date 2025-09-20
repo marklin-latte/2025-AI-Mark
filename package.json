@@ -15,6 +15,7 @@
   "dependencies": {
     "@langchain/core": "^1.0.0-alpha.5",
     "@langchain/langgraph": "^1.0.0-alpha.3",
+    "@langchain/langgraph-checkpoint-redis": "^0.0.1",
     "@langchain/openai": "^1.0.0-alpha.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
@@ -29,5 +30,10 @@
     "concurrently": "^9.2.1",
     "tsx": "^4.20.5",
     "vite": "^7.1.6"
+  },
+  "overrides": {
+    "@langchain/langgraph-checkpoint-redis": {
+      "@langchain/core": "1.0.0-alpha.5"
+    }
   }
 }

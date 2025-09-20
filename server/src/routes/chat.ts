@@ -17,7 +17,8 @@ router.get("/chat", async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
 
-  const threadId = randomUUID();
+  // 這個正常來說是從 client 送來的 token 解開後，來當 threadId
+  const threadId = '123';
   const chatWorkflow = new ChatWorkflow();
   await chatWorkflow.initialize(threadId);
 
