@@ -7,6 +7,8 @@ import {
 } from "@langchain/langgraph";
 
 import { BaseChatAI } from "./agents/base.agent";
+import { RedisSaver } from "@langchain/langgraph-checkpoint-redis";
+import { BaseCheckpointSaver } from "@langchain/langgraph";
 
 enum Steps {
   INITIAL = "initial",
@@ -26,13 +28,17 @@ export class ChatWorkflow {
   private baseChatAI: BaseChatAI | null = null;
   private graph: ReturnType<typeof this.buildGraph>;
   private threadId: string | null = null;
+  private checkpointSaver: BaseCheckpointSaver | null = null;
 
   constructor() {}
 
   public async initialize(threadId: string) {
-    this.baseChatAI = new BaseChatAI();
-    this.graph = this.buildGraph();
     this.threadId = threadId;
+    this.checkpointSaver = await RedisSaver.fromUrl(process.env.REDIS_URL!, {
+      defaultTTL: 60, // TTL in minutes
+      refreshOnRead: true,
+    });
+    this.baseChatAI = new BaseChatAI();
     this.graph = this.buildGraph();
   }
 
@@ -61,6 +67,9 @@ export class ChatWorkflow {
       .addEdge(Steps.INITIAL, Steps.CALL_CHAT_AI)
       .addEdge(Steps.CALL_CHAT_AI, END);
 
+    if (!this.checkpointSaver) {
+      throw new Error("Checkpoint saver is not initialized");
+    }
     return workflow.compile();
   }
 
