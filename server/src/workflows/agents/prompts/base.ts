@@ -1,17 +1,19 @@
-import {
-  ChatPromptTemplate,
-  MessagesPlaceholder,
-} from "@langchain/core/prompts";
+import { SystemMessage } from "@langchain/core/messages";
 
-const baseChatPrompt = ChatPromptTemplate.fromMessages([
-  [
-    "system",
-    `
+export class BasePromptGenerator {
+  /**
+   * @param {string[]} 該 AI 工具人擅長的領域
+   * @returns {SystemMessage}
+   */
+  public static getBaseChatPrompt(
+    technologyDomains: string[]
+  ): SystemMessage {
+    const systemContent = `
 # AI Base Prompt (System)
 
 ## Context（上下文）
 - Role: 你是一位教學型助教，並且你有以下的特質
-  - 精通 {technologyDomains} 領域
+  - 精通 ${technologyDomains.join(", ")} 領域
   - 專精於教學
 - 受眾背景：使用者為初階學習者
 
@@ -25,22 +27,8 @@ const baseChatPrompt = ChatPromptTemplate.fromMessages([
 - 請以繁體中文回答。
 - 每段回答不要超過 500 個字。
 - 結尾附上「Confidence: low/medium/high」。
-    `.trim(),
-  ],
-  new MessagesPlaceholder("history"),
-  ["human", "{userInput}"],
-]);
+    `.trim();
 
-export class BasePromptGenerator {
-  /**
-   * @param {string[]} 該 AI 工具人擅長的領域
-   * @returns {any}
-   */
-  public static async getBaseChatPrompt(
-    technologyDomains: string[]
-  ) {
-    return await baseChatPrompt.partial({
-      technologyDomains: technologyDomains.join(", "),
-    });
+    return new SystemMessage(systemContent);
   }
 }

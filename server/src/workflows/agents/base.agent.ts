@@ -1,4 +1,4 @@
-import { BaseMessage, SystemMessage, HumanMessage, AIMessage } from "langchain";
+import { BaseMessage, SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 import { createAgent, createMiddleware } from "langchain";
 import { Configurable } from "./interfaces/configurable";
 import { BaseCheckpointSaver } from "@langchain/langgraph";
@@ -42,15 +42,12 @@ export class BaseChatAI {
   }
 
   async callLLM(message: string): Promise<BaseMessage[]> {
-    const promptTemplate = await BasePromptGenerator.getBaseChatPrompt(["AI"]);
-    const formattedMessages = await promptTemplate.formatMessages({
-      userInput: message,
-      history: [],
-    });
+    const systemMessage = BasePromptGenerator.getBaseChatPrompt(["AI"]);
+    const humanMessage = new HumanMessage(message);
     
     const response = await this.agent.invoke(
       {
-        messages: formattedMessages,
+        messages: [systemMessage, humanMessage],
       },
       {
         configurable: {
