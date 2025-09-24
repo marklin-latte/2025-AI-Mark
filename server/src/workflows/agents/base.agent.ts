@@ -1,7 +1,10 @@
-import { BaseMessage, SystemMessage, HumanMessage, AIMessage } from "langchain";
+import { BaseMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 import { createAgent, createMiddleware } from "langchain";
 import { Configurable } from "./interfaces/configurable";
 import { BaseCheckpointSaver } from "@langchain/langgraph";
+import { BasePromptGenerator } from "./prompts/base";
+import { ChatOpenAI } from "@langchain/openai";
+
 
 const cleanMessageMiddleware = createMiddleware({
   name: "cleanMessageMiddleware",
@@ -32,7 +35,11 @@ export class BaseChatAI {
     this.checkpointSaver = checkpointSaver;
     this.configurable = configurable;
     this.agent = createAgent({
-      model: "openai:gpt-5-mini",
+      llm: new ChatOpenAI({
+        model: "gpt-5-mini",
+        timeout: 1200000,
+        promptCacheKey: 'base-chat-ai',
+      }),
       tools: [],
       checkpointer: this.checkpointSaver,
       // ref: https://blog.langchain.com/agent-middleware/
@@ -41,16 +48,12 @@ export class BaseChatAI {
   }
 
   async callLLM(message: string): Promise<BaseMessage[]> {
-    const messages = [
-      new SystemMessage(
-        "你是 AI 知識學習助理，會回答 AI 相關知識，回應不超過 300 個字，每一次回答都需要先叫對方的名字"
-      ),
-      new HumanMessage(message),
-    ];
-
+    const systemMessage = BasePromptGenerator.getBaseChatPrompt(["AI"]);
+    const humanMessage = new HumanMessage(message);
+    
     const response = await this.agent.invoke(
       {
-        messages,
+        messages: [systemMessage, humanMessage],
       },
       {
         configurable: {
