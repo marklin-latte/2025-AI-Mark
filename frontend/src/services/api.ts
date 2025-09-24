@@ -28,7 +28,7 @@ export class ChatAPI {
   constructor(config?: Partial<APIConfig>) {
     this.config = {
       baseUrl: 'http://localhost:3001/api',
-      timeout: 30000, // 30秒超時
+      timeout: 300000, // 300秒超時
       retryAttempts: 3,
       retryDelay: 1000,
       ...config

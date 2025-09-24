@@ -1,8 +1,10 @@
-import { BaseMessage, SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
+import { BaseMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 import { createAgent, createMiddleware } from "langchain";
 import { Configurable } from "./interfaces/configurable";
 import { BaseCheckpointSaver } from "@langchain/langgraph";
 import { BasePromptGenerator } from "./prompts/base";
+import { ChatOpenAI } from "@langchain/openai";
+
 
 const cleanMessageMiddleware = createMiddleware({
   name: "cleanMessageMiddleware",
@@ -33,7 +35,11 @@ export class BaseChatAI {
     this.checkpointSaver = checkpointSaver;
     this.configurable = configurable;
     this.agent = createAgent({
-      model: "openai:gpt-5-mini",
+      llm: new ChatOpenAI({
+        model: "gpt-5-mini",
+        timeout: 1200000,
+        promptCacheKey: 'base-chat-ai',
+      }),
       tools: [],
       checkpointer: this.checkpointSaver,
       // ref: https://blog.langchain.com/agent-middleware/
