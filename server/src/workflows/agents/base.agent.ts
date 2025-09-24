@@ -2,6 +2,7 @@ import { BaseMessage, SystemMessage, HumanMessage, AIMessage } from "langchain";
 import { createAgent, createMiddleware } from "langchain";
 import { Configurable } from "./interfaces/configurable";
 import { BaseCheckpointSaver } from "@langchain/langgraph";
+import { BasePromptGenerator } from "./prompts/base";
 
 const cleanMessageMiddleware = createMiddleware({
   name: "cleanMessageMiddleware",
@@ -41,16 +42,15 @@ export class BaseChatAI {
   }
 
   async callLLM(message: string): Promise<BaseMessage[]> {
-    const messages = [
-      new SystemMessage(
-        "你是 AI 知識學習助理，會回答 AI 相關知識，回應不超過 300 個字，每一次回答都需要先叫對方的名字"
-      ),
-      new HumanMessage(message),
-    ];
-
+    const promptTemplate = await BasePromptGenerator.getBaseChatPrompt(["AI"]);
+    const formattedMessages = await promptTemplate.formatMessages({
+      userInput: message,
+      history: [],
+    });
+    
     const response = await this.agent.invoke(
       {
-        messages,
+        messages: formattedMessages,
       },
       {
         configurable: {
