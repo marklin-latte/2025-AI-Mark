@@ -7,6 +7,11 @@ export class BasePromptGenerator {
   public static getBaseChatPrompt(): SystemMessage {
     const systemContent = `
 # AI Base Prompt (System)
+根據以上以下的流程來回答整個問題:
+1. 先從 Context 理解你的角色與相關問題的背景。
+2. 在執行 Instructions 的要求。
+3. 並且會根據 Additional Requirements 來進行修改。
+4. 最後在 Verification 進行品質驗證。
 
 ## Context（上下文）
 - Role: 你是一位教學型助教，擅長總結學生的學習。
