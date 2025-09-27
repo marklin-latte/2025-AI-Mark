@@ -5,7 +5,6 @@ import { BaseCheckpointSaver } from "@langchain/langgraph";
 import { BasePromptGenerator } from "./prompt";
 import { ChatOpenAI } from "@langchain/openai";
 
-
 const cleanMessageMiddleware = createMiddleware({
   name: "cleanMessageMiddleware",
   afterModel: (state: { messages: BaseMessage[] }) => {
@@ -38,7 +37,7 @@ export class LearningAI {
       llm: new ChatOpenAI({
         model: "gpt-5-mini",
         timeout: 1200000,
-        promptCacheKey: 'base-chat-ai',
+        promptCacheKey: "base-chat-ai",
       }),
       tools: [],
       checkpointer: this.checkpointSaver,
@@ -47,10 +46,14 @@ export class LearningAI {
     });
   }
 
-  async callLLM(message: string): Promise<BaseMessage[]> {
-    const systemMessage = BasePromptGenerator.getBaseChatPrompt(["AI"]);
+  async callLLM(
+    message: string,
+    studentBackground?: { domain: string; level: string }
+  ): Promise<BaseMessage[]> {
+    const systemMessage =
+      BasePromptGenerator.getBaseChatPrompt(studentBackground);
     const humanMessage = new HumanMessage(message);
-    
+
     const response = await this.agent.invoke(
       {
         messages: [systemMessage, humanMessage],

@@ -5,18 +5,22 @@ import {
   Annotation,
   MessagesAnnotation,
 } from "@langchain/langgraph";
+import { BaseMessage, HumanMessage } from "@langchain/core/messages";
 
 import { LearningAI } from "./agents/learning/learning.agent";
 import { RedisSaver } from "@langchain/langgraph-checkpoint-redis";
 import { BaseCheckpointSaver } from "@langchain/langgraph";
 import { RouteAgent, Intent } from "./agents/route/route.agent";
 import { SummaryAgent } from "./agents/summary/summary.agent";
+import { BackgroundAgent } from "./agents/background/background.agent";
+import { TaskEnum } from "./agents/background/background.agent";
 
 enum Steps {
   INITIAL = "Initial",
   LEARNING_AI = "LearningAI",
   ROUTE_AI = "RouteAI",
   SUMMARY_AI = "SummaryAI",
+  BACKGROUND_AI = "BackgroundAI",
 }
 
 const ChatStateAnnotation = Annotation.Root({
@@ -25,6 +29,10 @@ const ChatStateAnnotation = Annotation.Root({
   query: Annotation<string>,
   step: Annotation<Steps>,
   intent: Annotation<Intent | null>,
+  background: Annotation<{
+    domain: string;
+    level: string;
+  } | null>,
 });
 
 type ChatState = typeof ChatStateAnnotation.State;
@@ -33,10 +41,12 @@ export class ChatWorkflow {
   private learningAgent: LearningAI | null = null;
   private routeAgent: RouteAgent | null = null;
   private summaryAgent: SummaryAgent | null = null;
+  private backgroundAgent: BackgroundAgent | null = null;
 
   private graph: ReturnType<typeof this.buildGraph>;
   private threadId: string | null = null;
   private checkpointSaver: BaseCheckpointSaver | null = null;
+  private currentState: ChatState | null = null;
 
   constructor() {}
 
@@ -53,7 +63,12 @@ export class ChatWorkflow {
     this.summaryAgent = new SummaryAgent(this.checkpointSaver, {
       threadId: this.threadId,
     });
+    this.backgroundAgent = new BackgroundAgent({
+      threadId: this.threadId,
+    });
+
     this.graph = this.buildGraph();
+    this.currentState = await this.getCurrentState();
   }
 
   private buildGraph() {
@@ -64,22 +79,21 @@ export class ChatWorkflow {
           query: state.query,
           messages: [],
           intent: null,
+          background: state.background,
         };
       })
-      .addNode(
-        Steps.ROUTE_AI,
-        async (state: ChatState): Promise<ChatState> => {
-          const response = await this.routeAgent!.callLLM(state.query);
-          console.log("response", response);
+      .addNode(Steps.ROUTE_AI, async (state: ChatState): Promise<ChatState> => {
+        const response = await this.routeAgent!.callLLM(state.query);
+        console.log("response", response);
 
-          return {
-            step: Steps.ROUTE_AI,
-            query: state.query,
-            messages: [],
-            intent: response,
-          };
-        }
-      )
+        return {
+          step: Steps.ROUTE_AI,
+          query: state.query,
+          messages: [],
+          intent: response,
+          background: state.background,
+        };
+      })
       .addNode(
         Steps.LEARNING_AI,
         async (state: ChatState): Promise<ChatState> => {
@@ -90,6 +104,7 @@ export class ChatWorkflow {
             messages: [...response],
             query: state.query,
             intent: state.intent,
+            background: state.background,
           };
         }
       )
@@ -103,6 +118,36 @@ export class ChatWorkflow {
             messages: [...response],
             query: state.query,
             intent: state.intent,
+            background: state.background,
+          };
+        }
+      )
+      .addNode(
+        Steps.BACKGROUND_AI,
+        async (state: ChatState): Promise<ChatState> => {
+          if (state.background) {
+            return state;
+          }
+
+          const result = await this.backgroundAgent!.callLLM(state.query);
+          let messages: BaseMessage[] = [];
+          let background: {
+            domain: string;
+            level: string;
+          } | null = null;
+
+          if (result.task === TaskEnum.ASK_BACKGROUND) {
+            messages = [new HumanMessage((result.response as any).message!)];
+          } else {
+            background = result.response;
+          }
+
+          return {
+            step: Steps.BACKGROUND_AI,
+            messages: messages,
+            query: state.query,
+            intent: state.intent,
+            background,
           };
         }
       )
@@ -115,12 +160,15 @@ export class ChatWorkflow {
         if (state.intent === Intent.SUMMARY) {
           return Steps.SUMMARY_AI;
         }
-        if (state.intent === Intent.LEARNING) {
+        return Steps.BACKGROUND_AI;
+      })
+      .addEdge(Steps.SUMMARY_AI, END)
+      .addConditionalEdges(Steps.BACKGROUND_AI, (state: ChatState) => {
+        if (state.background) {
           return Steps.LEARNING_AI;
         }
         return END;
       })
-      .addEdge(Steps.SUMMARY_AI, END)
       .addEdge(Steps.LEARNING_AI, END);
 
     if (!this.checkpointSaver) {
@@ -139,19 +187,34 @@ export class ChatWorkflow {
   async *processMessage(
     message: string
   ): AsyncGenerator<string, void, unknown> {
-    const initialState: ChatState = {
-      query: message,
-      step: Steps.INITIAL,
-      messages: [],
-      intent: null,
-    };
+    this.currentState!.query = message;
 
-    const result: ChatState = await this.graph.invoke(initialState, {
+    const result: ChatState = await this.graph.invoke(this.currentState, {
       configurable: {
         thread_id: this.threadId,
       },
     });
 
     yield result.messages[result.messages.length - 1].content as string;
+  }
+
+  async getCurrentState(): Promise<ChatState | null> {
+    if (!this.threadId) return null;
+
+    const config = {
+      configurable: {
+        thread_id: this.threadId,
+      },
+    };
+
+    try {
+      const stateSnapshot = await this.graph.getState(config);
+      if(!stateSnapshot) return null;
+
+      return stateSnapshot.values as ChatState;
+    } catch (error) {
+      console.error("Error getting current state:", error);
+      return null;
+    }
   }
 }
