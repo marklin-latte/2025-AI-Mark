@@ -1,112 +1,129 @@
-import { ref, onMounted, nextTick } from 'vue'
-import { ChatAPI, APIError } from '../services/api'
+import { ref, onMounted, nextTick } from "vue";
+import { ChatAPI, APIError } from "../services/api";
 
 export interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: Date
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
 }
 
 export function useChatRoom() {
-  const chatAPI = new ChatAPI()
-  const messages = ref<Message[]>([])
-  const inputMessage = ref('')
-  const isLoading = ref(false)
-  const isConnected = ref(true)
-  const currentResponse = ref('')
-  const messagesContainer = ref<HTMLElement>()
-  const inputRef = ref<HTMLInputElement>()
+  const chatAPI = new ChatAPI();
+  const messages = ref<Message[]>([]);
+  const inputMessage = ref("");
+  const isLoading = ref(false);
+  const isConnected = ref(true);
+  const currentResponse = ref("");
+  const messagesContainer = ref<HTMLElement>();
+  const inputRef = ref<HTMLTextAreaElement>();
 
-  const addMessage = (role: 'user' | 'assistant', content: string) => {
+  const addMessage = (role: "user" | "assistant", content: string) => {
     messages.value.push({
       id: Date.now().toString(),
       role,
       content,
-      timestamp: new Date()
-    })
-    scrollToBottom()
-  }
+      timestamp: new Date(),
+    });
+    scrollToBottom();
+  };
 
   const scrollToBottom = () => {
     nextTick(() => {
       if (messagesContainer.value) {
-        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+        messagesContainer.value.scrollTop =
+          messagesContainer.value.scrollHeight;
       }
-    })
-  }
+    });
+  };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('zh-TW', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+    return date.toLocaleTimeString("zh-TW", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   const sendMessage = async () => {
-    if (!inputMessage.value.trim() || isLoading.value) return
+    if (!inputMessage.value.trim() || isLoading.value) return;
 
-    const userMessage = inputMessage.value.trim()
-    addMessage('user', userMessage)
+    const userMessage = inputMessage.value.trim();
+    addMessage("user", userMessage);
 
-    inputMessage.value = ''
-    isLoading.value = true
-    currentResponse.value = ''
+    inputMessage.value = "";
+    isLoading.value = true;
+    currentResponse.value = "";
 
     try {
       for await (const chunk of chatAPI.streamChat(userMessage)) {
-        currentResponse.value += chunk
-        scrollToBottom()
+        currentResponse.value += chunk;
+        scrollToBottom();
       }
 
       if (currentResponse.value) {
-        addMessage('assistant', currentResponse.value)
+        addMessage("assistant", currentResponse.value);
       }
     } catch (error) {
-      console.error('發送訊息錯誤:', error)
-      
-      let errorMessage = '抱歉，發生錯誤，請稍後再試。'
-      
+      console.error("發送訊息錯誤:", error);
+
+      let errorMessage = "抱歉，發生錯誤，請稍後再試。";
+
       if (error instanceof APIError) {
         switch (error.code) {
-          case 'TIMEOUT':
-            errorMessage = '請求超時，請檢查網路連線並重試。'
-            break
+          case "TIMEOUT":
+            errorMessage = "請求超時，請檢查網路連線並重試。";
+            break;
           default:
-            errorMessage = error.message || errorMessage
+            errorMessage = error.message || errorMessage;
         }
-        
+
         // 根據狀態碼決定是否設為離線
         if (error.status && error.status >= 500) {
-          isConnected.value = false
+          isConnected.value = false;
           setTimeout(() => {
-            isConnected.value = true
-          }, 5000)
+            isConnected.value = true;
+          }, 5000);
         }
       } else {
         // 其他類型的錯誤（如網路錯誤）
-        isConnected.value = false
+        isConnected.value = false;
         setTimeout(() => {
-          isConnected.value = true
-        }, 3000)
+          isConnected.value = true;
+        }, 3000);
       }
-      
-      addMessage('assistant', errorMessage)
+
+      addMessage("assistant", errorMessage);
     } finally {
-      isLoading.value = false
-      currentResponse.value = ''
-      inputRef.value?.focus()
+      isLoading.value = false;
+      currentResponse.value = "";
+      inputRef.value?.focus();
     }
-  }
+  };
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Enter") {
+      if (event.shiftKey) {
+        // Shift + Enter: 允許換行，不發送訊息
+        return;
+      } else {
+        // 單獨 Enter: 發送訊息
+        event.preventDefault();
+        sendMessage();
+      }
+    }
+  };
 
   const initialize = () => {
-    inputRef.value?.focus()
-    addMessage('assistant', '我是馬克大人的工具人，你要幹啥 ?')
-  }
+    inputRef.value?.focus();
+    addMessage(
+      "assistant",
+      "我是馬克大人的工具人，你今天想學什麼 ? 別那麼廢喔 ~ \n 一天沒學習皺紋就多一條喔 \n by 馬克大人"
+    );
+  };
 
   onMounted(() => {
-    initialize()
-  })
+    initialize();
+  });
 
   return {
     messages,
@@ -120,6 +137,7 @@ export function useChatRoom() {
     scrollToBottom,
     formatTime,
     sendMessage,
-    initialize
-  }
+    handleKeyDown,
+    initialize,
+  };
 }
