@@ -74,6 +74,7 @@ export class ChatWorkflow {
   private buildGraph() {
     const workflow = new StateGraph(ChatStateAnnotation)
       .addNode(Steps.INITIAL, async (state: ChatState): Promise<ChatState> => {
+        console.log("initial", state);
         return {
           step: Steps.INITIAL,
           query: state.query,
@@ -135,6 +136,7 @@ export class ChatWorkflow {
             domain: string;
             level: string;
           } | null = null;
+          console.log("result", result);
 
           if (result.task === TaskEnum.ASK_BACKGROUND) {
             messages = [new HumanMessage((result.response as any).message!)];
@@ -189,6 +191,7 @@ export class ChatWorkflow {
   ): AsyncGenerator<string, void, unknown> {
     this.currentState!.query = message;
 
+    console.log("this.currentState", this.currentState);
     const result: ChatState = await this.graph.invoke(this.currentState, {
       configurable: {
         thread_id: this.threadId,
