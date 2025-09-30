@@ -1,7 +1,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+
 import chatRoutes from "./routes/chat.js";
+import { connectDatabase } from "./infrastructure/mongodb/database.js";
 
 dotenv.config();
 
@@ -20,4 +22,5 @@ app.get("/health", (req, res) => {
 app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
+  await connectDatabase();
 });

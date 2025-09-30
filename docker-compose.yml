@@ -6,5 +6,17 @@ services:
     ports: ['6379:6379']
     volumes:
       - './docker-data/redis-data:/data'
+  mongodb:
+    image: mongo:latest
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: ai-mark-pro
+    volumes:
+      - mongodb_data:/data/db
 volumes:
   redis-data:
+  mongodb_data:

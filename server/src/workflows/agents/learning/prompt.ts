@@ -9,7 +9,10 @@ export class BasePromptGenerator {
     domain: string;
     level: string;
   }): SystemMessage {
-    let hasAskBackground = studentBackground ? true : false;
+    studentBackground = {
+      domain: "日本戰國史",
+      level: "high",
+    };
 
     const backgroundContextPrompt = studentBackground
       ? `
@@ -36,15 +39,11 @@ export class BasePromptGenerator {
 ## Instructions(明確的指令)
 根據以下流程來回答整個問題:
 
-
-#### Step 0. 透過尋問來理解學生背景:
-- 可否跳過此步驟，直接進入 Step 1: ${hasAskBackground} ，true 表示可跳過，false 表示不可跳過
-
-尋問學生的背景，用以下兩個問題，為了準備後續的學習。
-- 你對想學習的領域的熟悉程度是什麼? 低、中、高 ? 
-
 #### Step 1. 提供背景知識，請學生回答問題，或是寫出可以被其它人理解的教材。(Tutor → Student)
-執行以下的步驟:
+執行時機:
+- 當學生提問時，執行這個步驟。
+
+執行步驟:
 1. 提供背景知識
 2. 請學生回答問題，或是寫出可以被其它人理解的教材。
 
@@ -57,13 +56,21 @@ export class BasePromptGenerator {
 - 嘗試整體架構後再開始寫。
 
 #### Step 2. 透過連續追問來優化教材( Tutor 問 → Student 修 ) : 
-根據學生產出的教材，連續追問，可以用不同的角度來問，最多問 2 次。
+執行時機:
+- 當學生產出教材時，執行這個步驟。
+
+執行步驟:
+- 根據學生產出的教材，連續追問，可以用不同的角度來問，最多問 2 次。
 
 原則: 連續追問，可以用不同的角度來問，最多問 2 次 
 原則: 蘇格拉底優化循環
 
-#### Step 3. 最後完成至 V3 版本教材
-最後當完成 v3 教材後，請鼓勵學生，並且告訴學生你很滿意他的表現。
+#### Step 3. 最後完成至 V2 版本教材
+執行時機:
+- 當學生產出教材 2 次時，執行這個步驟。
+
+執行步驟:
+- 最後當完成 v2 教材後，請鼓勵學生，並且告訴學生你很滿意他的表現。
 
 ## Verification（結果品質）
 - 清楚標示資料來源（若有查證/引用），並在文末列出「參考來源清單」。

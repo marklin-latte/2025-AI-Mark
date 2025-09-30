@@ -5,7 +5,7 @@ import {
   Annotation,
   MessagesAnnotation,
 } from "@langchain/langgraph";
-import { BaseMessage, HumanMessage } from "@langchain/core/messages";
+import { AIMessage, BaseMessage, HumanMessage } from "@langchain/core/messages";
 
 import { LearningAI } from "./agents/learning/learning.agent";
 import { RedisSaver } from "@langchain/langgraph-checkpoint-redis";
@@ -14,6 +14,8 @@ import { RouteAgent, Intent } from "./agents/route/route.agent";
 import { SummaryAgent } from "./agents/summary/summary.agent";
 import { BackgroundAgent } from "./agents/background/background.agent";
 import { TaskEnum } from "./agents/background/background.agent";
+import { TaskEnum as SummaryTaskEnum } from "./agents/summary/summary.agent";
+import { LearningRecord } from "../infrastructure/mongodb/models/learningRecord";
 
 enum Steps {
   INITIAL = "Initial",
@@ -99,6 +101,7 @@ export class ChatWorkflow {
         Steps.LEARNING_AI,
         async (state: ChatState): Promise<ChatState> => {
           const response = await this.learningAgent!.callLLM(state.query);
+          console.log("learning response", response);
 
           return {
             step: Steps.LEARNING_AI,
@@ -114,9 +117,41 @@ export class ChatWorkflow {
         async (state: ChatState): Promise<ChatState> => {
           const response = await this.summaryAgent!.callLLM(state.query);
 
+          if (response.task === SummaryTaskEnum.SUMMARY) {
+            await LearningRecord.insertMany(
+              response.response.map((item) => ({
+                youLearned: item.youLearned,
+                yourOutput: item.yourOutput,
+                feedback: item.feedback,
+                afterThoughtQuestions: item.afterThoughtQuestions,
+                createdAt: item.createdAt,
+              }))
+            );
+          }
+
           return {
             step: Steps.SUMMARY_AI,
-            messages: [...response],
+            messages: [
+              ...response.response.map(
+                (item) =>
+                  new AIMessage(`
+                **你學習了什麼**: 
+                ${item.youLearned}
+
+                **你的產出**: 
+                ${item.yourOutput}
+
+                **回饋**: 
+                ${item.feedback}
+
+                **課後思考的問題**: 
+                ${item.afterThoughtQuestions}
+
+                **時間**: 
+                ${item.createdAt}
+              `)
+              ),
+            ],
             query: state.query,
             intent: state.intent,
             background: state.background,
@@ -166,6 +201,7 @@ export class ChatWorkflow {
       })
       .addEdge(Steps.SUMMARY_AI, END)
       .addConditionalEdges(Steps.BACKGROUND_AI, (state: ChatState) => {
+        return Steps.LEARNING_AI;
         if (state.background) {
           return Steps.LEARNING_AI;
         }
@@ -212,7 +248,7 @@ export class ChatWorkflow {
 
     try {
       const stateSnapshot = await this.graph.getState(config);
-      if(!stateSnapshot) return null;
+      if (!stateSnapshot) return null;
 
       return stateSnapshot.values as ChatState;
     } catch (error) {
