@@ -13,7 +13,7 @@ export class BasePromptGenerator {
 
 ## Instructions（明確的指令）
 根據學生需求，來判斷是以下哪一種意圖:
-- summary: 總結今日的學習/取得今日的學習結果/取得昨天學習的結果/取得某一天學習的結果
+- summary: 總結今日的學習/取得今日的學習結果/取得昨天學習的結果/取得某一天學習的結果/建立學習筆記/建立 notion 筆記
 - learning: 學習中，如果不確定也回傳 learning
 
 ## Example

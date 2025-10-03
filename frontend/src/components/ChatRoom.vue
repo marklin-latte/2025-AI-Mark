@@ -32,13 +32,14 @@
     
     <div class="chat-input">
       <form @submit.prevent="sendMessage">
-        <input 
+        <textarea
           v-model="inputMessage"
-          type="text"
-          placeholder="輸入訊息..."
+          placeholder="輸入訊息... (Shift+Enter 換行，Enter 發送)"
           :disabled="isLoading"
           ref="inputRef"
-        />
+          rows="1"
+          @keydown="handleKeyDown"
+        ></textarea>
         <button type="submit" :disabled="isLoading || !inputMessage.trim()">
           {{ isLoading ? '發送中...' : '發送' }}
         </button>
@@ -59,7 +60,8 @@ const {
   messagesContainer,
   inputRef,
   formatTime,
-  sendMessage
+  sendMessage,
+  handleKeyDown
 } = useChatRoom()
 </script>
 
@@ -170,16 +172,22 @@ const {
   gap: 0.75rem;
 }
 
-.chat-input input {
+.chat-input textarea {
   flex: 1;
   padding: 0.75rem 1rem;
   border: 1px solid #d1d5db;
   border-radius: 0.5rem;
   font-size: 1rem;
   outline: none;
+  resize: none;
+  font-family: inherit;
+  line-height: 1.5;
+  min-height: 48px;
+  max-height: 120px;
+  overflow-y: auto;
 }
 
-.chat-input input:focus {
+.chat-input textarea:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }

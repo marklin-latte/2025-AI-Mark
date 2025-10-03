@@ -6,11 +6,13 @@ import {
   MessagesAnnotation,
 } from "@langchain/langgraph";
 import { AIMessage, BaseMessage, HumanMessage } from "@langchain/core/messages";
-
-import { LearningAI } from "./agents/learning/learning.agent";
+import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 import { RedisSaver } from "@langchain/langgraph-checkpoint-redis";
 import { BaseCheckpointSaver } from "@langchain/langgraph";
+import moment from "moment";
+
 import { RouteAgent, Intent } from "./agents/route/route.agent";
+import { LearningAI } from "./agents/learning/learning.agent";
 import { SummaryAgent } from "./agents/summary/summary.agent";
 import { BackgroundAgent } from "./agents/background/background.agent";
 import { TaskEnum } from "./agents/background/background.agent";
@@ -62,9 +64,21 @@ export class ChatWorkflow {
       threadId: this.threadId,
     });
     this.routeAgent = new RouteAgent();
-    this.summaryAgent = new SummaryAgent(this.checkpointSaver, {
-      threadId: this.threadId,
+
+    const notionMcpClient = new MultiServerMCPClient({
+      notion: {
+        url: "http://localhost:3002/notion/mcp",
+      },
     });
+    const notionMcpTools = await notionMcpClient.getTools();
+
+    this.summaryAgent = new SummaryAgent(
+      this.checkpointSaver,
+      {
+        threadId: this.threadId,
+      },
+      notionMcpTools
+    );
     this.backgroundAgent = new BackgroundAgent({
       threadId: this.threadId,
     });
@@ -116,42 +130,60 @@ export class ChatWorkflow {
         Steps.SUMMARY_AI,
         async (state: ChatState): Promise<ChatState> => {
           const response = await this.summaryAgent!.callLLM(state.query);
+          let message: BaseMessage = new AIMessage("系統炸了...");
 
           if (response.task === SummaryTaskEnum.SUMMARY) {
-            await LearningRecord.insertMany(
-              response.response.map((item) => ({
-                youLearned: item.youLearned,
-                yourOutput: item.yourOutput,
-                feedback: item.feedback,
-                afterThoughtQuestions: item.afterThoughtQuestions,
-                createdAt: item.createdAt,
-              }))
+            await LearningRecord.create({
+              youLearned: response.response.youLearned,
+              yourOutput: response.response.yourOutput,
+              feedback: response.response.feedback,
+              afterThoughtQuestions: response.response.afterThoughtQuestions,
+              createdAt: response.response.createdAt,
+            });
+            message = new AIMessage(`
+              **你學習了什麼**: 
+              ${response.response.youLearned}
+
+              **你的產出**: 
+              ${response.response.yourOutput}
+
+              **回饋**: 
+              ${response.response.feedback}
+
+              **課後思考的問題**: 
+              ${response.response.afterThoughtQuestions}
+
+              **時間**: 
+              ${response.response.createdAt}
+            `);
+          } else if (response.task === SummaryTaskEnum.GET_LEARNING_RECORDS) {
+            message = new AIMessage(`
+              **你在 ${moment(response.response.createdAt).format(
+                "YYYY-MM-DD"
+              )} 學習了什麼**: 
+              ${response.response.youLearned}
+
+              **你的產出**: 
+              ${response.response.yourOutput}
+
+              **回饋**: 
+              ${response.response.feedback}
+
+              **課後思考的問題**: 
+              ${response.response.afterThoughtQuestions}
+
+              **時間**: 
+              ${response.response.createdAt}
+            `);
+          } else if (response.task === SummaryTaskEnum.CREATE_NOTION_PAGE) {
+            message = new AIMessage(
+              `你的 Notion 筆記已經建立成功，請至以下連結查看: ${response.response.url}`
             );
           }
 
           return {
             step: Steps.SUMMARY_AI,
-            messages: [
-              ...response.response.map(
-                (item) =>
-                  new AIMessage(`
-                **你學習了什麼**: 
-                ${item.youLearned}
-
-                **你的產出**: 
-                ${item.yourOutput}
-
-                **回饋**: 
-                ${item.feedback}
-
-                **課後思考的問題**: 
-                ${item.afterThoughtQuestions}
-
-                **時間**: 
-                ${item.createdAt}
-              `)
-              ),
-            ],
+            messages: [message],
             query: state.query,
             intent: state.intent,
             background: state.background,

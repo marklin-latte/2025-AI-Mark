@@ -19,27 +19,34 @@ export const getLearningRecords = tool(
       console.log("query", query);
 
       const records = await LearningRecord.find(query).exec();
-      console.log("records", records);
       if (records.length === 0) {
         return "沒有找到學習記錄";
       }
 
-      return JSON.stringify(records);
+      return {
+        isSuccess: true,
+        data: records,
+      };
     } catch (error) {
       console.error("Error fetching learning records:", error);
       return {
-        success: false,
-        error: "取得學習記錄失敗",
-        records: [],
+        isSuccess: false,
+        data: error.message,
       };
     }
   },
   {
     name: "getLearningRecords",
     description: `取得/拿取/查詢學習記錄/取得昨天學習的結果/取得某一天學習的結果
-    使用時機 (Use it when): 
-    1.當用戶有查詢/取得/拿取學習記錄的意圖時使用 ( Use it when the user shows an intention to query/get/take a learning record. )
-    2.當用戶要求查詢學習記錄時使用 ( Use it when the user requests to query a learning record. )
+    ## 使用時機 (Use it when): 
+     - 1.當用戶有查詢/取得/拿取學習記錄的意圖時使用 ( Use it when the user shows an intention to query/get/take a learning record. )
+
+    ## tool call 的結束條件
+     - 當成功取得學習記錄時，回傳學習記錄物件，就結束這個工具的呼叫
+    
+    ## 不可使用此工具的時機
+     - 當用戶沒有查詢/取得/拿取學習記錄的意圖時，不可使用此工具
+     - notion 相關的意圖時，不可使用此工具
     `,
     schema: z.object({
       startDate: z

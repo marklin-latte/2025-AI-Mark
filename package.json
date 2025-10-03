@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "concurrently \"npm run server:dev\" \"npm run frontend:dev\"",
     "server:dev": "tsx watch server/src/index.ts",
+    "notion:dev": "tsx watch mcp-server/notion/index.ts",
     "frontend:dev": "vite",
     "frontend:build": "vite build",
     "drag-chat-graph": "tsx server/src/scripts/dragChatGraph.ts"
@@ -16,7 +17,10 @@
     "@langchain/core": "^1.0.0-alpha.5",
     "@langchain/langgraph": "^1.0.0-alpha.3",
     "@langchain/langgraph-checkpoint-redis": "^0.0.1",
+    "@langchain/mcp-adapters": "^0.6.0",
     "@langchain/openai": "^1.0.0-alpha.1",
+    "@modelcontextprotocol/sdk": "^1.18.2",
+    "@notionhq/client": "^5.1.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
@@ -35,6 +39,9 @@
   },
   "overrides": {
     "@langchain/langgraph-checkpoint-redis": {
+      "@langchain/core": "1.0.0-alpha.5"
+    },
+    "@langchain/mcp-adapters": {
       "@langchain/core": "1.0.0-alpha.5"
     }
   }
